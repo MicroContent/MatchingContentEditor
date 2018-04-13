@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MatchingContentEditor</title>
+    <script type="application/javascript"> 
+        /** 
+            dont delete! used for initialization.
+        **/
+        function init() {
+            window.data = getData();
+            setDataGetter(dataGetter)
+        }
+    </script>
+
+    <style type="text/css">
+        .item {
+            display: inline-block;
+            margin: 10px;
+            padding: 5px 14px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .item.active:hover {
+            background-color: #eee;
+        }
+
+        .focused-item {
+            color: white;
+            background-color: #3f51b5;
+        }
+
+        .focused-item.active:hover {
+            color: white;
+            background-color: #3f51b5;
+            border: 2px solid #ddd;
+            margin: 9px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="panel panel-primary">
+            <div class="panel-body">
+                <div class="form-group form-group-lg is-empty">
+                    <label for="titleInput" class="control-label">Title</label>
+                    <input id="titleInput" class="form-control" type="text" />
+                </div>
+                <div>
+                    You can add up to 5 categories where every category can have multiple matching items.
+                </div>
+                <div id="categoryContainer">
+                    <button id="addCategory" class="btn btn-primary" type="button">Add Category</button>
+                </div>
+                <div>
+                    You can add items which can be referenced in no or up to all categories by clicking on the category id.
+                </div>
+                <div class="form-group">
+                    <div class="input-group">
+                        <input type="text" id="addItemInput" class="form-control">
+                        <span class="input-group-btn">
+                            <button id="addItem" class="btn btn-primary" type="button">Add Item</button>
+                        </span>
+                    </div>
+                </div>
+
+                <div id="globalItemContainer">
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="application/javascript">
+        var categories = [];
+        var globalItems = [];
+        var selectedItem;
+        var selectElements = [];
+        var addCategoryButton = document.getElementById("addCategory");
+
+        addCategoryButton.onclick = function () {
+            addCategoryButton.parentNode.insertBefore(createCategory(undefined), addCategoryButton);
+        }
+
+        var globalItemContainer = document.getElementById("globalItemContainer");
+
+        var addItemToListButton = document.getElementById("addItem");
+        addItemToListButton.onclick = function () {
+            createGlobalItem(document.getElementById("addItemInput").value);
+        }
+
+        function getNumCategories() {
+            return categories.length;
+        }
+
+        function getCategoryClickFunction(items) {
+            var categoryClickFunc = function () {
+                if (selectedItem !== undefined) {
+                    var index = -1;
+                    categoryElements.some((function (c, i) {
+                        if (c.name === id) {
+                            index = i;
+                            return true;
+                        }
+                    }));
+                    var currentCategory = categoryElements[index];
+
+                    if (currentCategory !== undefined) {
+                        var isAlreadyMatched = currentCategory.matchedItems.some(function (item) { return item === selectedItem.innerHTML });
+                        if (!isAlreadyMatched) {
+                            var item = document.createElement("a");
+                            item.setAttribute("class", "item active");
+                            item.innerHTML = selectedItem.innerHTML;
+                            item.onclick = function () {
+                                items.removeChild(item);
+                                var index = currentCategory.matchedItems.indexOf(item.innerHTML);
+
+                                if (index > -1) {
+                                    currentCategory.matchedItems.splice(index, 1);
+                                }
+                                sendStatement(buildStatement("interacted"));
+                            }
+                            items.appendChild(item);
+                            currentCategory.matchedItems.push(item.innerHTML);
+                            updateLayout();
+                            sendStatement(buildStatement("interacted"));
+                        }
+                    }
+                }
+            }
+            return categoryClickFunc;
+        }
+
+        function createCategory(name) {
+            var newCategory = document.createElement("div");
+            newCategory.setAttribute("class", "form-group");
+
+            var newInputGroup = document.createElement("div");
+            newInputGroup.setAttribute("class", "input-group");
+
+            var label = document.createElement("span");
+            label.setAttribute("for", "category" + (getNumCategories() + 1));
+            label.innerHTML = getNumCategories() + 1;
+            label.setAttribute("class", "input-group-addon");
+
+            var input = document.createElement("input");
+            input.setAttribute("id", "category" + (getNumCategories() + 1));
+            input.setAttribute("type", "text");
+            input.setAttribute("class", "form-control");
+
+            if (name !== undefined) {
+                input.value = name;
+            }
+            newInputGroup.appendChild(label);
+            newInputGroup.appendChild(input);
+
+            var items = document.createElement("div");
+            items.setAttribute("id", "items" + (getNumCategories() + 1));
+            
+            label.onclick = function() {
+                if (selectedItem !== undefined) {
+                     var isAlreadyMatched = false;
+                     for (var i = 0; i < items.childNodes.length; i++) {
+                         if (items.childNodes[i].innerHTML === selectedItem.innerHTML) {
+                             isAlreadyMatched = true;
+                         }
+                     }
+                    if (!isAlreadyMatched) {
+                        items.appendChild(createItem(selectedItem.innerHTML));
+                    }
+                }
+            }
+
+            newCategory.appendChild(newInputGroup);
+            newCategory.appendChild(items);
+            categories.push(newCategory);
+
+            if (getNumCategories() >= 5) {
+                addCategoryButton.style.visibility = "hidden";
+            }
+
+            return newCategory;
+        }
+
+        function createItem(name) {
+            var newItem = document.createElement("a");
+            newItem.setAttribute("class", "item active");
+
+            if (name !== undefined) {
+                newItem.innerHTML = name;
+            }
+
+            newItem.onclick = function () {
+                newItem.parentNode.removeChild(newItem);
+            }
+            return newItem;
+        }
+
+        function createGlobalItem(itemValue) {
+            itemValue = itemValue.replace(/[\[\]]/g, "");
+            var isExisting = globalItems.some(function (item) { return item === itemValue });
+
+            if (!isExisting && itemValue !== "") {
+                var item = document.createElement("a");
+                item.setAttribute("class", "item active");
+                item.innerHTML = itemValue;
+
+                item.onclick = function () {
+                    selectedItem = item;
+                    var globalItems = globalItemContainer.getElementsByClassName("item");
+
+                    for (var i = 0; i < globalItems.length; i++) {
+                        globalItems[i].classList.remove("focused-item");
+                    }
+
+                    item.classList.add("focused-item");
+                }
+                globalItems.push(itemValue);
+                globalItemContainer.appendChild(item);
+            }
+        }
+
+        function dataGetter() {
+            var catList = [];
+
+            categories.forEach(function (cat, index) {
+                var category = {};
+                category.id = (index + 1).toString();
+                category.name = cat.getElementsByTagName("input")[0].value;
+
+                if (category.name !== "") {
+                    var items = document.getElementById("items" + (index + 1)).childNodes;
+                    category.items = [];
+                    for (var i = 0; items !== undefined && i < items.length; i++) {
+                        category.items.push(items[i].innerHTML);
+                    }
+
+                    catList.push(category);
+                }
+            });
+            return {
+                // return data object
+                lastEdit: Date.now(),
+                title: document.getElementById('titleInput').value,
+                categories: catList,
+                globalItems: globalItems
+            }
+        }
+
+        init();
+
+        document.getElementById('titleInput').value = window.data.title;
+
+        window.data.globalItems.forEach(function (item) {
+            createGlobalItem(item);
+        });
+
+        for (var i = 0; i < window.data.categories.length; i++) {
+            var cat = window.data.categories[i];
+            addCategoryButton.parentNode.insertBefore(createCategory(cat.name), addCategoryButton);
+
+            var itemContainer = document.getElementById("items" + (i + 1));
+            cat.items.forEach(function (item) {
+                itemContainer.appendChild(createItem(item));
+            });
+        }
+    </script>
+</body>
+
+</html>
